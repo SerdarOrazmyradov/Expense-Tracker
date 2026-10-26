@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald" class="transition-colors duration-300">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker & Analytics</title>
+  <!-- Tailwind CSS + DaisyUI CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-base-200/60 text-base-content p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Header Section -->
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-6 rounded-2xl shadow-sm border border-base-300">
+      <div class="flex items-center gap-3">
+        <div class="p-3 bg-primary/10 text-primary rounded-xl">
+          <i data-lucide="wallet" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Expense Tracker</h1>
+          <p class="text-xs text-base-content/60">Manage finances & track spending analytics</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <!-- Month Filter -->
+        <div class="flex items-center gap-2 bg-base-200 px-3 py-1.5 rounded-xl border border-base-300">
+          <i data-lucide="calendar" class="w-4 h-4 text-base-content/60"></i>
+          <select id="monthFilter" onchange="renderApp()" class="select select-ghost select-xs focus:bg-transparent font-medium text-sm focus:outline-none">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <!-- Dark Mode Toggle -->
+        <button onclick="toggleTheme()" class="btn btn-circle btn-ghost btn-sm" title="Toggle Theme">
+          <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats Overview Cards -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="stat bg-base-100 rounded-2xl shadow-sm border border-base-300">
+        <div class="stat-figure text-primary">
+          <i data-lucide="dollar-sign" class="w-7 h-7"></i>
+        </div>
+        <div class="stat-title font-medium">Total Spent</div>
+        <div class="stat-value text-primary text-3xl mt-1" id="statTotal">$0.00</div>
+        <div class="stat-desc mt-1" id="statTotalDesc">Filtered period total</div>
+      </div>
+
+      <div class="stat bg-base-100 rounded-2xl shadow-sm border border-base-300">
+        <div class="stat-figure text-secondary">
+          <i data-lucide="receipt" class="w-7 h-7"></i>
+        </div>
+        <div class="stat-title font-medium">Transactions</div>
+        <div class="stat-value text-secondary text-3xl mt-1" id="statCount">0</div>
+        <div class="stat-desc mt-1">Total recorded items</div>
+      </div>
+
+      <div class="stat bg-base-100 rounded-2xl shadow-sm border border-base-300">
+        <div class="stat-figure text-accent">
+          <i data-lucide="calculator" class="w-7 h-7"></i>
+        </div>
+        <div class="stat-title font-medium">Average / Expense</div>
+        <div class="stat-value text-accent text-3xl mt-1" id="statAvg">$0.00</div>
+        <div class="stat-desc mt-1">Mean per transaction</div>
+      </div>
+    </section>
+
+    <!-- Main Grid: Form & Category Analytics / Recent List -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Add/Edit Expense Form + Analytics -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Add / Edit Form Card -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+          <div class="card-body p-6">
+            <h2 class="card-title text-lg font-bold flex items-center gap-2" id="formTitle">
+              <i data-lucide="plus-circle" class="w-5 h-5 text-primary"></i> Add New Expense
+            </h2>
+            
+            <form id="expenseForm" onsubmit="handleFormSubmit(event)" class="space-y-4 mt-2">
+              <input type="hidden" id="expenseId" />
+
+              <div>
+                <label class="label label-text font-medium py-1">Description / Title</label>
+                <input type="text" id="expDesc" placeholder="e.g. Grocery Shopping" required class="input input-bordered w-full input-sm rounded-lg" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="label label-text font-medium py-1">Amount ($)</label>
+                  <input type="number" step="0.01" id="expAmount" placeholder="0.00" min="0.01" required class="input input-bordered w-full input-sm rounded-lg" />
+                </div>
+                <div>
+                  <label class="label label-text font-medium py-1">Category</label>
+                  <select id="expCategory" required class="select select-bordered w-full select-sm rounded-lg">
+                    <option value="Food">Food</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Health">Health</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="label label-text font-medium py-1">Date</label>
+                <input type="date" id="expDate" required class="input input-bordered w-full input-sm rounded-lg" />
+              </div>
+
+              <div class="flex gap-2 pt-2">
+                <button type="submit" id="submitBtn" class="btn btn-primary btn-sm flex-1 text-white">
+                  <i data-lucide="plus" class="w-4 h-4"></i> Add Expense
+                </button>
+                <button type="button" id="cancelBtn" onclick="resetForm()" class="btn btn-ghost btn-sm hidden">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Category Breakdown / Analytics -->
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+          <div class="card-body p-6">
+            <h2 class="card-title text-lg font-bold flex items-center justify-between">
+              <span class="flex items-center gap-2"><i data-lucide="pie-chart" class="w-5 h-5 text-secondary"></i> Category Breakdown</span>
+            </h2>
+            
+            <div id="categoryBreakdown" class="space-y-4 mt-2">
+              <!-- Dynamically populated category bars -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Expense Table / List -->
+      <div class="lg:col-span-7">
+        <div class="card bg-base-100 shadow-sm border border-base-300 h-full">
+          <div class="card-body p-6 flex flex-col justify-between">
+            <div>
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h2 class="card-title text-lg font-bold flex items-center gap-2">
+                  <i data-lucide="list" class="w-5 h-5 text-accent"></i> Expense History
+                </h2>
+                <span id="historyBadge" class="badge badge-neutral badge-sm font-normal">Showing current period</span>
+              </div>
+
+              <!-- Expenses Table Container -->
+              <div class="overflow-x-auto">
+                <table class="table table-zebra w-full text-sm">
+                  <thead>
+                    <tr class="text-xs uppercase text-base-content/60 border-b border-base-300">
+                      <th>Details</th>
+                      <th>Category</th>
+                      <th>Amount</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expenseTableBody">
+                    <!-- Dynamic rows generated by JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div id="emptyState" class="hidden text-center py-12">
+                <div class="p-3 bg-base-200 rounded-full w-12 h-12 inline-flex items-center justify-center mb-3 text-base-content/40">
+                  <i data-lucide="inbox" class="w-6 h-6"></i>
+                </div>
+                <p class="font-medium text-base-content/70">No expenses recorded for this filter.</p>
+                <p class="text-xs text-base-content/40 mt-1">Add a new item or change your month selection.</p>
+              </div>
+            </div>
+
+            <!-- Footer Stats Hint -->
+            <div class="pt-4 mt-6 border-t border-base-200 text-xs text-base-content/50 flex justify-between items-center">
+              <span>Data stored locally in browser</span>
+              <button onclick="clearAllData()" class="hover:text-error transition-colors">Clear All Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- Initial Seed Data & Configurations ---
+    const CATEGORIES = {
+      Food: { color: 'progress-primary', bg: 'bg-primary/10', text: 'text-primary', icon: 'utensils' },
+      Transport: { color: 'progress-secondary', bg: 'bg-secondary/10', text: 'text-secondary', icon: 'car' },
+      Utilities: { color: 'progress-accent', bg: 'bg-accent/10', text: 'text-accent', icon: 'zap' },
+      Entertainment: { color: 'progress-warning', bg: 'bg-warning/10', text: 'text-warning', icon: 'film' },
+      Shopping: { color: 'progress-info', bg: 'bg-info/10', text: 'text-info', icon: 'shopping-bag' },
+      Health: { color: 'progress-success', bg: 'bg-success/10', text: 'text-success', icon: 'activity' },
+      Other: { color: 'progress-neutral', bg: 'bg-neutral/10', text: 'text-neutral', icon: 'more-horizontal' }
+    };
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentYearMonth = todayStr.substring(0, 7);
+
+    const defaultSeedExpenses = [
+      { id: '1', desc: 'Weekly Groceries', amount: 84.50, category: 'Food', date: `${currentYearMonth}-04` },
+      { id: '2', desc: 'Gas Station Fill-up', amount: 45.00, category: 'Transport', date: `${currentYearMonth}-08` },
+      { id: '3', desc: 'Electric Bill', amount: 110.20, category: 'Utilities', date: `${currentYearMonth}-12` },
+      { id: '4', desc: 'Movie Night Out', amount: 32.00, category: 'Entertainment', date: `${currentYearMonth}-15` },
+      { id: '5', desc: 'Running Shoes', amount: 89.99, category: 'Shopping', date: `${currentYearMonth}-18` }
+    ];
+
+    // State Variables
+    let expenses = JSON.parse(localStorage.getItem('expenses_data')) || defaultSeedExpenses;
+    let currentTheme = localStorage.getItem('expenses_theme') || 'emerald';
+
+    // --- Core Logic & Functions ---
+
+    // Save to LocalStorage
+    function saveExpenses() {
+      localStorage.setItem('expenses_data', JSON.stringify(expenses));
+    }
+
+    // Toggle Theme
+    function toggleTheme() {
+      currentTheme = currentTheme === 'emerald' ? 'night' : 'emerald';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      localStorage.setItem('expenses_theme', currentTheme);
+      updateThemeIcon();
+    }
+
+    function updateThemeIcon() {
+      const iconEl = document.getElementById('themeIcon');
+      if (currentTheme === 'night') {
+        iconEl.setAttribute('data-lucide', 'sun');
+      } else {
+        iconEl.setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+    }
+
+    // Setup Month Filter Dropdown
+    function populateMonthFilter() {
+      const filterSelect = document.getElementById('monthFilter');
+      const selectedValue = filterSelect.value;
+      
+      // Get unique Year-Months from expenses
+      const months = new Set(expenses.map(e => e.date.substring(0, 7)));
+      months.add(currentYearMonth); // Ensure current month exists
+
+      const sortedMonths = Array.from(months).sort().reverse();
+
+      filterSelect.innerHTML = `<option value="ALL">All Time</option>`;
+      sortedMonths.forEach(m => {
+        const [y, monthNum] = m.split('-');
+        const dateObj = new Date(y, parseInt(monthNum) - 1, 1);
+        const label = dateObj.toLocaleDateString('default', { month: 'short', year: 'numeric' });
+        filterSelect.innerHTML += `<option value="${m}">${label}</option>`;
+      });
+
+      // Preserve or set default selection
+      if (selectedValue && [...months, 'ALL'].includes(selectedValue)) {
+        filterSelect.value = selectedValue;
+      } else {
+        filterSelect.value = currentYearMonth;
+      }
+    }
+
+    // Filter Expenses Based on Selection
+    function getFilteredExpenses() {
+      const filterValue = document.getElementById('monthFilter').value;
+      if (!filterValue || filterValue === 'ALL') {
+        return expenses;
+      }
+      return expenses.filter(e => e.date.startsWith(filterValue));
+    }
+
+    // Main Render Loop
+    function renderApp() {
+      populateMonthFilter();
+      const filtered = getFilteredExpenses();
+
+      // Render Summary Stats
+      const total = filtered.reduce((acc, curr) => acc + curr.amount, 0);
+      const count = filtered.length;
+      const avg = count > 0 ? total / count : 0;
+
+      document.getElementById('statTotal').innerText = `$${total.toFixed(2)}`;
+      document.getElementById('statCount').innerText = count;
+      document.getElementById('statAvg').innerText = `$${avg.toFixed(2)}`;
+
+      // Render Table
+      const tbody = document.getElementById('expenseTableBody');
+      const emptyState = document.getElementById('emptyState');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        
+        // Sort descending by date
+        const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sorted.forEach(exp => {
+          const catConfig = CATEGORIES[exp.category] || CATEGORIES.Other;
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-base-200/40 transition-colors';
+          tr.innerHTML = `
+            <td>
+              <div class="font-semibold text-sm">${escapeHtml(exp.desc)}</div>
+              <div class="text-xs text-base-content/50">${exp.date}</div>
+            </td>
+            <td>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${catConfig.bg} ${catConfig.text}">
+                <i data-lucide="${catConfig.icon}" class="w-3.5 h-3.5"></i>
+                ${exp.category}
+              </span>
+            </td>
+            <td class="font-bold text-sm">$${exp.amount.toFixed(2)}</td>
+            <td class="text-end">
+              <div class="flex justify-end gap-1">
+                <button onclick="editExpense('${exp.id}')" class="btn btn-ghost btn-xs btn-square text-base-content/60 hover:text-primary" title="Edit">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteExpense('${exp.id}')" class="btn btn-ghost btn-xs btn-square text-base-content/60 hover:text-error" title="Delete">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Render Category Analytics
+      renderCategoryAnalytics(filtered, total);
+
+      // Re-initialize Lucide Icons
+      lucide.createIcons();
+    }
+
+    // Render Category Breakdown Progress Bars
+    function renderCategoryAnalytics(filteredExpenses, totalAmount) {
+      const container = document.getElementById('categoryBreakdown');
+      container.innerHTML = '';
+
+      // Aggregate totals by category
+      const categoryTotals = {};
+      Object.keys(CATEGORIES).forEach(cat => categoryTotals[cat] = 0);
+      filteredExpenses.forEach(exp => {
+        if (categoryTotals[exp.category] !== undefined) {
+          categoryTotals[exp.category] += exp.amount;
+        } else {
+          categoryTotals['Other'] = (categoryTotals['Other'] || 0) + exp.amount;
+        }
+      });
+
+      // Filter categories with amounts > 0 or sort them
+      const activeCategories = Object.keys(categoryTotals)
+        .filter(cat => categoryTotals[cat] > 0)
+        .sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+
+      if (activeCategories.length === 0) {
+        container.innerHTML = `<p class="text-xs text-base-content/50 text-center py-4">No data available for breakdown</p>`;
+        return;
+      }
+
+      activeCategories.forEach(cat => {
+        const catAmount = categoryTotals[cat];
+        const pct = totalAmount > 0 ? ((catAmount / totalAmount) * 100).toFixed(1) : 0;
+        const catConfig = CATEGORIES[cat] || CATEGORIES.Other;
+
+        const itemHTML = `
+          <div>
+            <div class="flex justify-between items-center text-xs mb-1">
+              <span class="font-medium flex items-center gap-1.5">
+                <i data-lucide="${catConfig.icon}" class="w-3.5 h-3.5 ${catConfig.text}"></i>
+                ${cat}
+              </span>
+              <span class="font-semibold">$${catAmount.toFixed(2)} <span class="text-base-content/50 font-normal">(${pct}%)</span></span>
+            </div>
+            <progress class="progress ${catConfig.color} w-full h-2" value="${pct}" max="100"></progress>
+          </div>
+        `;
+        container.innerHTML += itemHTML;
+      });
+    }
+
+    // Handle Form Add / Update
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('expenseId').value;
+      const desc = document.getElementById('expDesc').value.trim();
+      const amount = parseFloat(document.getElementById('expAmount').value);
+      const category = document.getElementById('expCategory').value;
+      const date = document.getElementById('expDate').value;
+
+      if (!desc || isNaN(amount) || !date) return;
+
+      if (id) {
+        // Edit Mode
+        const index = expenses.findIndex(exp => exp.id === id);
+        if (index !== -1) {
+          expenses[index] = { id, desc, amount, category, date };
+        }
+      } else {
+        // Add Mode
+        const newExpense = {
+          id: Date.now().toString(),
+          desc,
+          amount,
+          category,
+          date
+        };
+        expenses.push(newExpense);
+      }
+
+      saveExpenses();
+      resetForm();
+      renderApp();
+    }
+
+    // Edit Item
+    function editExpense(id) {
+      const exp = expenses.find(e => e.id === id);
+      if (!exp) return;
+
+      document.getElementById('expenseId').value = exp.id;
+      document.getElementById('expDesc').value = exp.desc;
+      document.getElementById('expAmount').value = exp.amount;
+      document.getElementById('expCategory').value = exp.category;
+      document.getElementById('expDate').value = exp.date;
+
+      document.getElementById('formTitle').innerHTML = `<i data-lucide="pencil" class="w-5 h-5 text-primary"></i> Edit Expense`;
+      document.getElementById('submitBtn').innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Update Expense`;
+      document.getElementById('cancelBtn').classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    // Delete Item
+    function deleteExpense(id) {
+      expenses = expenses.filter(exp => exp.id !== id);
+      saveExpenses();
+      renderApp();
+    }
+
+    // Reset Form
+    function resetForm() {
+      document.getElementById('expenseForm').reset();
+      document.getElementById('expenseId').value = '';
+      document.getElementById('expDate').value = todayStr;
+
+      document.getElementById('formTitle').innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-primary"></i> Add New Expense`;
+      document.getElementById('submitBtn').innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> Add Expense`;
+      document.getElementById('cancelBtn').classList.add('hidden');
+
+      lucide.createIcons();
+    }
+
+    // Clear All Data
+    function clearAllData() {
+      if (confirm('Are you sure you want to clear all expense records?')) {
+        expenses = [];
+        saveExpenses();
+        renderApp();
+      }
+    }
+
+    // Utility HTML Escaper
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+      });
+    }
+
+    // --- Application Initialization ---
+    window.onload = () => {
+      // Set Theme
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      updateThemeIcon();
+
+      // Default Date Input
+      document.getElementById('expDate').value = todayStr;
+
+      // First Render
+      renderApp();
+    };
+  </script>
+</body>
+</html>
